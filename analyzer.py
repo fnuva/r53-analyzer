@@ -86,27 +86,34 @@ def enrich_data_with_receiver(r53_dns_map,alb_service_map):
 #
 #
 #
-# data_sender: #  [{'dns':'service-d.internal.myservice', 'from':'service-a'},{'dns':'service-d.internal.myservice', 'from':'service-b'}]
+# data_sender: #  {'i-06766c1dd0d299dff':'service-a','i-067661230d299dff':'service-b'}
 # data_receiver: {'service-d.internal.myservice':'service-d'}
 # 
 # merge data and generate all graph information 
 #  
-# result: [{'from':'service-a','to':'service-d'},{'from':'service-b','to':'service-d'}]
+# result: [{'data':{'id':'service-a'}},{'data':{'id':'service-d'}},{'data':{'id':'service-b'}},{'data':{'source':'service-a','targetto':'service-d'}},{'data':{'source':'service-b','target':'service-d'}}]
 #
 def merge_all_data(data,data_sender,data_receiver):
   results = []
   edges = []
   nodes_ = set()
-  nodes_.update(data_sender.values())
-  nodes_.update(data_receiver.values())
+  nodes_.update(data_sender.values(),data_receiver.values())
   
   for dat in data['results']:
     edge = dict({})
     for da in dat:
       if da['field'] == 'srcids.instance':
+        if da['value'] in data_sender:
           edge['source'] = data_sender[da['value']]
+        else:
+          edge['source'] = 'unkown'
+          nodes_.update(['unkown'])
       elif da['field'] == 'query_name':
-          edge['target'] = data_receiver[da['value']] if da['value'] in data_receiver else 'unkown'
+        if da['value'] in data_receiver:
+          edge['target'] = data_receiver[da['value']]  
+        else: 
+          edge['target'] = 'unkown'
+          nodes_.update(['unkown'])
     if edge not in edges:
       edges.append(edge)
   for node in nodes_:
@@ -145,8 +152,8 @@ def plot(result):
   app.run_server(debug=True)
 
 
+
 if __name__ == "__main__":
-    HOSTED_ZONE_ID  = "Z09309253VRP626Q5TZR0"
     SERVICE_TAG_KEY = "Service"
     REGION='eu-central-1'
     HOSTED_ZONE_NAME = 'internal.myservice'
